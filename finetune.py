@@ -4,7 +4,12 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import json
+import math
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 
@@ -33,6 +38,12 @@ class FineTuneConfig:
     packing: bool = True
     max_steps: int = -1
     resume_from_checkpoint: Optional[str] = None
+    post_eval: bool = False
+    eval_dataset_name: str = "tatsu-lab/alpaca"
+    eval_split: str = "train[:32]"
+    eval_max_samples: int = 32
+    eval_max_length: int = 512
+    eval_log_path: Optional[str] = None
 
     # lora
     lora_r: int = 32
@@ -325,6 +336,74 @@ class UnslothFineTuner:
             train_kwargs["resume_from_checkpoint"] = self.cfg.resume_from_checkpoint
         trainer.train(**train_kwargs)
 
+    def _infer_text_column(self, columns: List[str]) -> str:
+        for key in ["text", "output", "response", "completion"]:
+            if key in columns:
+                return key
+        raise ValueError(f"Could not infer evaluation text column from: {columns}")
+
+    def evaluate_perplexity(self) -> Dict[str, Any]:
+        import torch
+
+        load_dataset, _, _, _, _ = self._lazy_imports()
+        ds = load_dataset(self.cfg.eval_dataset_name, split=self.cfg.eval_split)
+        text_col = self._infer_text_column(ds.column_names)
+
+        usable = min(self.cfg.eval_max_samples, len(ds))
+        losses = []
+        for i in range(usable):
+            text = ds[i][text_col]
+            if not text:
+                continue
+
+            tokens = self.tokenizer(
+                text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=self.cfg.eval_max_length,
+            )
+            tokens = {k: v.to(self.model.device) for k, v in tokens.items()}
+
+            with torch.no_grad():
+                out = self.model(**tokens, labels=tokens["input_ids"])
+            losses.append(float(out.loss.item()))
+
+        if not losses:
+            raise RuntimeError("Post-eval had no usable samples.")
+
+        avg_loss = sum(losses) / len(losses)
+        ppl = math.exp(avg_loss)
+        return {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "model_name": self.cfg.model_name,
+            "lora_path": self.cfg.lora_save_path,
+            "eval_dataset_name": self.cfg.eval_dataset_name,
+            "eval_split": self.cfg.eval_split,
+            "eval_max_samples": self.cfg.eval_max_samples,
+            "eval_max_length": self.cfg.eval_max_length,
+            "eval_used_samples": len(losses),
+            "avg_loss": avg_loss,
+            "perplexity": ppl,
+        }
+
+    def log_eval_metrics(self, metrics: Dict[str, Any]):
+        log_path = Path(self.cfg.eval_log_path or f"{self.cfg.output_dir}/eval_metrics.jsonl")
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if log_path.suffix.lower() == ".csv":
+            fieldnames = list(metrics.keys())
+            file_exists = log_path.exists()
+            with log_path.open("a", newline="", encoding="utf-8") as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                if not file_exists:
+                    writer.writeheader()
+                writer.writerow(metrics)
+        else:
+            with log_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(metrics) + "\n")
+
+        print("Saved evaluation metrics to:", str(log_path))
+
     # Save
     def save(self):
         print("Saving LoRA adapters to:", self.cfg.lora_save_path)
@@ -345,6 +424,13 @@ class UnslothFineTuner:
         print("Sample formatted text:\n", ds["text"][0][:800])
         self.train(ds)
         self.save()
+
+        if self.cfg.post_eval:
+            print("Running post-training perplexity evaluation...")
+            metrics = self.evaluate_perplexity()
+            print(f"Post-eval loss: {metrics['avg_loss']:.4f} | perplexity: {metrics['perplexity']:.4f}")
+            self.log_eval_metrics(metrics)
+
         print("Done")
 
 
@@ -378,6 +464,38 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Path to Trainer checkpoint directory to resume training from.",
     )
+    parser.add_argument(
+        "--post-eval",
+        action="store_true",
+        help="Run perplexity evaluation after training and write metrics log.",
+    )
+    parser.add_argument(
+        "--eval-dataset-name",
+        default="tatsu-lab/alpaca",
+        help="Dataset used for post-training perplexity evaluation.",
+    )
+    parser.add_argument(
+        "--eval-split",
+        default="train[:32]",
+        help="Dataset split used for post-training perplexity evaluation.",
+    )
+    parser.add_argument(
+        "--eval-max-samples",
+        type=int,
+        default=32,
+        help="Max examples for post-training perplexity evaluation.",
+    )
+    parser.add_argument(
+        "--eval-max-length",
+        type=int,
+        default=512,
+        help="Token cap per post-training evaluation example.",
+    )
+    parser.add_argument(
+        "--eval-log-path",
+        default=None,
+        help="Metrics log output path (.jsonl or .csv). Default: <output_dir>/eval_metrics.jsonl",
+    )
 
     return parser
 
@@ -407,6 +525,12 @@ def main():
         save_merged=args.save_merged,
         merged_save_path=args.merged_save_path,
         resume_from_checkpoint=args.resume_from_checkpoint,
+        post_eval=args.post_eval,
+        eval_dataset_name=args.eval_dataset_name,
+        eval_split=args.eval_split,
+        eval_max_samples=args.eval_max_samples,
+        eval_max_length=args.eval_max_length,
+        eval_log_path=args.eval_log_path,
     )
 
     trainer = UnslothFineTuner(cfg)

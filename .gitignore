@@ -5,3 +5,5 @@ sanity_lora
 sanity_outputs
 stability_lora
 stability_outputs
+autoeval_lora
+autoeval_outputs

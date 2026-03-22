@@ -77,6 +77,35 @@ python finetune.py \
 	--resume-from-checkpoint stability_outputs/checkpoint-128
 ```
 
+Run training with automatic post-eval metrics logging (JSONL):
+
+```bash
+python finetune.py \
+	--model-name unsloth/Phi-3-mini-4k-instruct-bnb-4bit \
+	--dataset-name tatsu-lab/alpaca \
+	--split train[:128] \
+	--max-steps 64 \
+	--output-dir autoeval_outputs \
+	--lora-save-path autoeval_lora \
+	--post-eval \
+	--eval-dataset-name tatsu-lab/alpaca \
+	--eval-split train[:16]
+```
+
+Write metrics as CSV instead:
+
+```bash
+python finetune.py \
+	--model-name unsloth/Phi-3-mini-4k-instruct-bnb-4bit \
+	--dataset-name tatsu-lab/alpaca \
+	--split train[:128] \
+	--max-steps 64 \
+	--output-dir autoeval_outputs \
+	--lora-save-path autoeval_lora \
+	--post-eval \
+	--eval-log-path autoeval_outputs/eval_metrics.csv
+```
+
 ## Evaluation
 
 Use `evaluate.py` to run prompt generation and/or perplexity checks.
@@ -91,6 +120,22 @@ python evaluate.py \
 	--split train[:32]
 ```
 
+## Compare checkpoints from logs
+
+Use `summarize_eval_logs.py` to rank runs from JSONL/CSV metric logs.
+
+Sort by perplexity (best first):
+
+```bash
+python summarize_eval_logs.py --root . --sort-by perplexity
+```
+
+Sort by average loss and show top 10:
+
+```bash
+python summarize_eval_logs.py --root . --sort-by avg_loss --top-k 10
+```
+
 ## Notebook usage
 
 Open `FineTuning.ipynb` and run cells in order.
@@ -101,3 +146,4 @@ Open `FineTuning.ipynb` and run cells in order.
 - Output LoRA adapters are saved to `--lora-save-path`.
 - Use `--save-merged` to also save a merged fp16 model.
 - Use `--resume-from-checkpoint` with `--output-dir` to continue interrupted runs.
+- Use `--post-eval` to automatically compute perplexity after training and append metrics to JSONL/CSV.
