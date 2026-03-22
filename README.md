@@ -7,8 +7,10 @@
 <p align="center">
 	<a href="#"><img alt="Python" src="https://img.shields.io/badge/Python-3.10%2B-1C2541?style=for-the-badge&logo=python&logoColor=F8FAFC"></a>
 	<a href="#"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-2.x-3A86FF?style=for-the-badge&logo=pytorch&logoColor=F8FAFC"></a>
-	<a href="#"><img alt="LoRA" src="https://img.shields.io/badge/LoRA-Unsloth%20Optimized-00B4D8?style=for-the-badge&logoColor=F8FAFC"></a>
+	<a href="#"><img alt="QLoRA" src="https://img.shields.io/badge/Default-QLoRA%20%284--bit%29-00B4D8?style=for-the-badge&logoColor=F8FAFC"></a>
+	<a href="#"><img alt="LoRA" src="https://img.shields.io/badge/Optional-LoRA%20%28no%204--bit%29-3A86FF?style=for-the-badge&logoColor=F8FAFC"></a>
 	<a href="#"><img alt="Hardware" src="https://img.shields.io/badge/Hardware-CUDA%20GPU-2EC4B6?style=for-the-badge&logo=nvidia&logoColor=0B132B"></a>
+</p>
 
 <p align="center">
 	A polished, ML fine-tuning pipeline: train, evaluate, resume, and rank experiments with one consistent workflow.
@@ -23,7 +25,7 @@
 	<a href="#why-this-matters">Why This Matters</a>
 </p>
 
-Fine-tune small language models with Unsloth + LoRA using CLI or notebook flow, with built-in support for checkpoint resume, automatic post-training evaluation logging, and reproducible run ranking.
+Fine-tune small language models with Unsloth using QLoRA by default (4-bit quantized base + LoRA adapters), with optional full LoRA mode, checkpoint resume, automatic post-training evaluation logging, and reproducible run ranking.
 
 ## Problem
 
@@ -33,12 +35,18 @@ Demos for ML projects often fail because they are fragmented: one script for tra
 
 This project provides one coherent workflow that is easy to explain live:
 
-- Train LoRA adapters with one configurable script
+- Train with QLoRA by default, or switch to full LoRA when needed
 - Resume from checkpoints without custom patching
 - Auto-log post-training perplexity in JSONL or CSV
 - Run standalone generation/perplexity validation
 - Rank experiments by perplexity or loss from saved logs
 - Launch an end-to-end demo from one command
+
+### QLoRA and LoRA modes
+
+- Default mode is QLoRA: the base model is loaded in 4-bit and LoRA adapters are trained.
+- Optional mode is full LoRA: disable 4-bit loading with `--no-4bit`.
+- This gives a memory-efficient default for demos while still supporting non-quantized LoRA runs.
 
 ## Architecture
 
@@ -267,6 +275,7 @@ Open `FineTuning.ipynb` and run cells in order for an interactive flow.
 ## Practical notes
 
 - The script expects CUDA by default; use `--allow-cpu` only for debugging.
+- Default training mode is QLoRA; use `--no-4bit` to switch to full LoRA.
 - LoRA adapters are written to `--lora-save-path`.
 - Use `--save-merged` when you also need a merged fp16 model.
 - Use `--resume-from-checkpoint` with `--output-dir` to continue interrupted runs.
