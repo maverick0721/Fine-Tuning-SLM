@@ -46,6 +46,51 @@ python finetune.py \
 	--lora-save-path phi3_pharma_lora
 ```
 
+Run longer stability training with a fixed step budget:
+
+```bash
+python finetune.py \
+	--model-name unsloth/Phi-3-mini-4k-instruct-bnb-4bit \
+	--dataset-name tatsu-lab/alpaca \
+	--split train[:256] \
+	--per-device-bs 1 \
+	--grad-acc-steps 1 \
+	--max-seq-length 512 \
+	--max-steps 128 \
+	--output-dir stability_outputs \
+	--lora-save-path stability_lora
+```
+
+Resume from a checkpoint:
+
+```bash
+python finetune.py \
+	--model-name unsloth/Phi-3-mini-4k-instruct-bnb-4bit \
+	--dataset-name tatsu-lab/alpaca \
+	--split train[:256] \
+	--per-device-bs 1 \
+	--grad-acc-steps 1 \
+	--max-seq-length 512 \
+	--max-steps 160 \
+	--output-dir stability_outputs \
+	--lora-save-path stability_lora \
+	--resume-from-checkpoint stability_outputs/checkpoint-128
+```
+
+## Evaluation
+
+Use `evaluate.py` to run prompt generation and/or perplexity checks.
+
+Evaluate your LoRA adapter:
+
+```bash
+python evaluate.py \
+	--base-model unsloth/Phi-3-mini-4k-instruct-bnb-4bit \
+	--adapter-path sanity_lora \
+	--dataset-name tatsu-lab/alpaca \
+	--split train[:32]
+```
+
 ## Notebook usage
 
 Open `FineTuning.ipynb` and run cells in order.
@@ -55,3 +100,4 @@ Open `FineTuning.ipynb` and run cells in order.
 - By default, the script requires CUDA. Use `--allow-cpu` only for debugging/smoke checks.
 - Output LoRA adapters are saved to `--lora-save-path`.
 - Use `--save-merged` to also save a merged fp16 model.
+- Use `--resume-from-checkpoint` with `--output-dir` to continue interrupted runs.

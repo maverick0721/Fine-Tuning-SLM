@@ -31,6 +31,8 @@ class FineTuneConfig:
     warmup_ratio: float = 0.1
     logging_steps: int = 10
     packing: bool = True
+    max_steps: int = -1
+    resume_from_checkpoint: Optional[str] = None
 
     # lora
     lora_r: int = 32
@@ -61,10 +63,10 @@ class UnslothFineTuner:
         self.tokenizer = None
 
     def _lazy_imports(self):
+        from unsloth import FastLanguageModel
         from datasets import load_dataset
         from peft import PeftModel
         from trl import SFTConfig, SFTTrainer
-        from unsloth import FastLanguageModel
 
         return load_dataset, PeftModel, SFTTrainer, SFTConfig, FastLanguageModel
 
@@ -313,10 +315,15 @@ class UnslothFineTuner:
                 logging_steps=self.cfg.logging_steps,
                 seed=self.cfg.seed,
                 output_dir=self.cfg.output_dir,
+                max_steps=self.cfg.max_steps,
                 report_to="none",
             ),
         )
-        trainer.train()
+        train_kwargs = {}
+        if self.cfg.resume_from_checkpoint:
+            print("Resuming from checkpoint:", self.cfg.resume_from_checkpoint)
+            train_kwargs["resume_from_checkpoint"] = self.cfg.resume_from_checkpoint
+        trainer.train(**train_kwargs)
 
     # Save
     def save(self):
@@ -358,6 +365,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--warmup-ratio", type=float, default=0.1)
     parser.add_argument("--logging-steps", type=int, default=10)
+    parser.add_argument("--max-steps", type=int, default=-1)
     parser.add_argument("--seed", type=int, default=3407)
 
     parser.add_argument("--no-4bit", action="store_true", help="Disable 4-bit model loading")
@@ -365,6 +373,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--save-merged", action="store_true", help="Save merged fp16 model")
     parser.add_argument("--use-gc", action="store_true", help="Enable gradient checkpointing")
     parser.add_argument("--allow-cpu", action="store_true", help="Allow running without CUDA")
+    parser.add_argument(
+        "--resume-from-checkpoint",
+        default=None,
+        help="Path to Trainer checkpoint directory to resume training from.",
+    )
 
     return parser
 
@@ -388,10 +401,12 @@ def main():
         lr=args.lr,
         warmup_ratio=args.warmup_ratio,
         logging_steps=args.logging_steps,
+        max_steps=args.max_steps,
         packing=not args.no_packing,
         use_gc=args.use_gc,
         save_merged=args.save_merged,
         merged_save_path=args.merged_save_path,
+        resume_from_checkpoint=args.resume_from_checkpoint,
     )
 
     trainer = UnslothFineTuner(cfg)
