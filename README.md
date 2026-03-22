@@ -9,11 +9,9 @@
 	<a href="#"><img alt="PyTorch" src="https://img.shields.io/badge/PyTorch-2.x-3A86FF?style=for-the-badge&logo=pytorch&logoColor=F8FAFC"></a>
 	<a href="#"><img alt="LoRA" src="https://img.shields.io/badge/LoRA-Unsloth%20Optimized-00B4D8?style=for-the-badge&logoColor=F8FAFC"></a>
 	<a href="#"><img alt="Hardware" src="https://img.shields.io/badge/Hardware-CUDA%20GPU-2EC4B6?style=for-the-badge&logo=nvidia&logoColor=0B132B"></a>
-	<a href="#"><img alt="Demo" src="https://img.shields.io/badge/Interview%20Demo-One%20Command-1C2541?style=for-the-badge&logoColor=F8FAFC"></a>
-</p>
 
 <p align="center">
-	A polished, interview-ready ML fine-tuning pipeline: train, evaluate, resume, and rank experiments with one consistent workflow.
+	A polished, ML fine-tuning pipeline: train, evaluate, resume, and rank experiments with one consistent workflow.
 </p>
 
 <p align="center">
@@ -29,7 +27,7 @@ Fine-tune small language models with Unsloth + LoRA using CLI or notebook flow, 
 
 ## Problem
 
-Interview demos for ML projects often fail because they are fragmented: one script for training, another for evaluation, no reproducible metrics log, and no clean way to compare runs.
+Demos for ML projects often fail because they are fragmented: one script for training, another for evaluation, no reproducible metrics log, and no clean way to compare runs.
 
 ## Solution
 
@@ -40,7 +38,7 @@ This project provides one coherent workflow that is easy to explain live:
 - Auto-log post-training perplexity in JSONL or CSV
 - Run standalone generation/perplexity validation
 - Rank experiments by perplexity or loss from saved logs
-- Launch an end-to-end demo from one command for recruiters/interviewers
+- Launch an end-to-end demo from one command
 
 ## Architecture
 
@@ -51,7 +49,7 @@ This project provides one coherent workflow that is easy to explain live:
 | `summarize_eval_logs.py` | Aggregates JSONL/CSV logs into a ranked table |
 | `FineTuning.ipynb` | Notebook-based workflow for interactive runs |
 | `requirements.txt` | Python dependencies |
-| `run_demo.sh` | One-command interview/recruiter walkthrough |
+| `run_demo.sh` | One-command walkthrough |
 
 ## Workflow Diagram
 
@@ -112,7 +110,7 @@ Example metrics from a real quick run:
 
 - Shows end-to-end ML ownership, not just model training
 - Demonstrates reproducibility with logged metrics and ranked runs
-- Makes technical storytelling easier in interviews
+- Makes technical storytelling easier
 - Reduces live-demo risk with one consistent command path
 
 ## Environment
@@ -130,7 +128,7 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## One-Command Interview Demo
+## One-Command Demo
 
 Run this once to execute the full story: train, post-eval log, standalone eval, and ranked summary.
 
